@@ -1,7 +1,6 @@
 import time
 import random
 
-# ESTRUTURA DE DADOS: Atividade [1, 4]
 class Atividade:
     def __init__(self, codigo, nome, inicio, fim, prioridade, participantes):
         self.codigo = codigo
@@ -12,10 +11,9 @@ class Atividade:
         self.participantes = participantes
 
     def __repr__(self):
-        return f"[Cod: {self.codigo}] {self.nome: <15} | Horário: {self.inicio:0>2}:00-{self.fim:0>2}:00 | Part: {self.participantes: <3} | Prio: {self.prioridade}"
+        return f"[Cod: {self.codigo}] {self.nome: <10} | Horário: {self.inicio:0>2}:00-{self.fim:0>2}:00 | Part: {self.participantes}"
 
-# IMPLEMENTAÇÃO OBRIGATÓRIA: MERGE SORT [5-7]
-# Utiliza o paradigma de "Dividir para Conquistar" para garantir complexidade O(n log n) [5, 8, 9].
+# IMPLEMENTAÇÃO OBRIGATÓRIA: MERGE SORT (Dividir para Conquistar)
 def merge_sort(lista, chave):
     if len(lista) > 1:
         meio = len(lista) // 2
@@ -45,115 +43,98 @@ def merge_sort(lista, chave):
             j += 1
             k += 1
 
-# ESTRATÉGIA 1: ALGORITMO GULOSO (Seleção de Atividades Clássica) [1, 10-12]
-# Objetivo: Selecionar o MAIOR NÚMERO possível de atividades sem conflito [1, 2].
-# A escolha localmente ótima é selecionar a atividade que termina mais cedo [11, 12].
+# ESTRATÉGIA GULOSA: Foco em Quantidade Máxima
 def selecao_gulosa(atividades):
-    # A ordenação pelo horário de fim é essencial para a prova de corretude da estratégia gulosa [11, 13].
     atividades_copy = atividades[:]
-    merge_sort(atividades_copy, 'fim')
+    merge_sort(atividades_copy, 'fim') # Ordenação obrigatória por fim
     
+    # Ajuste na geração de dados para garantir que fim seja maior que início
+    # Caso contrário, nenhuma atividade pode ser selecionada
     selecionadas = []
     if not atividades_copy:
         return selecionadas
 
-    # Seleciona a primeira atividade (a que termina mais cedo)
-    ultima_atividade = atividades_copy
-    selecionadas.append(ultima_atividade)
-
-    for i in range(1, len(atividades_copy)):
-        # Se a atividade atual começa após ou no momento do fim da última selecionada [1, 4]
-        if atividades_copy[i].inicio >= ultima_atividade.fim:
-            selecionadas.append(atividades_copy[i])
-            ultima_atividade = atividades_copy[i]
+    ultima_fim = -1
+    for act in atividades_copy:
+        if act.inicio >= ultima_fim:
+            selecionadas.append(act)
+            ultima_fim = act.fim
             
     return selecionadas
 
-# ESTRATÉGIA 2: PROGRAMAÇÃO DINÂMICA (Weighted Interval Scheduling) [1, 12, 14-16]
-# Objetivo: Maximizar o BENEFÍCIO TOTAL (ex: soma de participantes ou peso) [1, 17].
-# Diferente do guloso, esta técnica evita o re-cálculo e busca o ótimo global considerando pesos [12, 16].
+# PROGRAMAÇÃO DINÂMICA: Foco em Benefício Máximo (Participantes)
 def selecao_dp(atividades):
     atividades_copy = atividades[:]
     merge_sort(atividades_copy, 'fim')
     n = len(atividades_copy)
+    if n == 0: return 0, []
     
-    # Encontrar o último índice j < i que não conflita com a atividade i
+    # Função para encontrar a última atividade compatível
     def busca_compativel(lista, i):
         for j in range(i - 1, -1, -1):
             if lista[j].fim <= lista[i].inicio:
                 return j
         return -1
 
-    # table[i] armazena o lucro/benefício máximo obtido considerando atividades até o índice i [12, 16].
-    table =  * n
-    table = atividades_copy.participantes
+    # CORREÇÃO: Inicialização correta da tabela DP
+    table = [0] * n 
+    table[0] = atividades_copy[0].participantes # Pega participantes do primeiro objeto corretamente
     
-    # Lista para rastrear as atividades selecionadas no ótimo global
-    selecionadas_indices = [[] for _ in range(n)]
-    selecionadas_indices = [atividades_copy]
-
+    # Lista para rastrear quais atividades compõem a solução ótima
+    selecionadas_list = [[] for _ in range(n)]
+    selecionadas_list[0] = [atividades_copy[0]]
+    
     for i in range(1, n):
-        beneficio_atual = atividades_copy[i].participantes
+        # Opção 1: Incluir a atividade atual
+        beneficio_incluindo = atividades_copy[i].participantes
         j = busca_compativel(atividades_copy, i)
+        if j != -1:
+            beneficio_incluindo += table[j]
         
-        beneficio_incluindo = beneficio_atual + (table[j] if j != -1 else 0)
+        # Opção 2: Excluir a atividade atual (pegar o melhor resultado anterior)
         beneficio_excluindo = table[i-1]
-
+        
         if beneficio_incluindo > beneficio_excluindo:
             table[i] = beneficio_incluindo
-            selecionadas_indices[i] = (selecionadas_indices[j] if j != -1 else []) + [atividades_copy[i]]
+            selecionadas_list[i] = (selecionadas_list[j] if j != -1 else []) + [atividades_copy[i]]
         else:
             table[i] = beneficio_excluindo
-            selecionadas_indices[i] = selecionadas_indices[i-1]
+            selecionadas_list[i] = selecionadas_list[i-1]
     
-    return table[n-1], selecionadas_indices[n-1]
+    return table[n-1], selecionadas_list[n-1]
 
-# GERADOR DE DADOS PARA TESTES [1, 18]
-def gerar_atividades(quantidade):
-    lista = []
-    for i in range(quantidade):
-        inicio = random.randint(8, 18)
-        fim = inicio + random.randint(1, 4)
-        lista.append(Atividade(
-            i + 1, 
-            f"Atividade {i+1}", 
-            inicio, 
-            fim, 
-            random.randint(1, 5), 
-            random.randint(10, 100)
-        ))
-    return lista
+# CONJUNTOS DE TESTE OBRIGATÓRIOS
+def gerar_dados(n):
+    # CORREÇÃO LÓGICA: O horário de 'fim' deve ser gerado com base no horário de 'inicio'
+    # Se início for sorteado como 18h e fim como 11h, a atividade seria inválida.
+    dados = []
+    for i in range(n):
+        inicio = random.randint(8, 17)
+        fim = random.randint(inicio + 1, 22) # Garante que o fim é depois do início
+        dados.append(Atividade(i+1, f"Ativ_{i+1}", inicio, fim, random.randint(1,5), random.randint(10,100)))
+    return dados
 
-# EXECUÇÃO DOS CONJUNTOS DE TESTE [1, 18]
 def executar_sistema():
-    testes = [
-        ("PEQUENO", gerar_atividades(8)),
-        ("MÉDIO", gerar_atividades(15)),
-        ("MAIOR", gerar_atividades(35))
-    ]
-
-    for label, dados in testes:
-        print(f"\n{'='*30} TESTE {label} {'='*30}")
-        print(f"Total de Atividades Cadastradas: {len(dados)}")
+    print("INSTITUTO DE COMPUTAÇÃO - UFBA")
+    print("Sistema de Agendamento de Atividades - Testes Operacionais\n")
+    
+    cenarios = [("Pequeno", 8), ("Médio", 15), ("Maior", 35)]
+    
+    for nome, qtd in cenarios:
+        print(f"{'='*20} TESTE {nome.upper()} ({qtd} atividades) {'='*20}")
+        dados = gerar_dados(qtd)
         
-        # Benchmarking de desempenho [1, 4]
-        start_time = time.time()
+        start = time.time()
         
-        # Execução Gulosa
-        res_guloso = selecao_gulosa(dados)
-        print(f"\n>>> SOLUÇÃO GULOSA (Foco em Qtd Máxima):")
-        print(f"Total de atividades selecionadas: {len(res_guloso)}")
-        for a in res_guloso: print(f"  {a}")
+        # Teste Guloso
+        gulosa = selecao_gulosa(dados)
+        print(f"Gulosa (Foco Qtd): {len(gulosa)} atividades selecionadas.")
         
-        # Execução Programação Dinâmica
-        beneficio_dp, itens_dp = selecao_dp(dados)
-        print(f"\n>>> SOLUÇÃO P. DINÂMICA (Foco em Máximo de Participantes):")
-        print(f"Benefício total (Participantes): {beneficio_dp}")
-        print(f"Total de atividades selecionadas: {len(itens_dp)}")
-        for a in itens_dp: print(f"  {a}")
+        # Teste DP
+        valor_dp, itens_dp = selecao_dp(dados)
+        print(f"P. Dinâmica (Foco Partic.): {valor_dp} participantes em {len(itens_dp)} atividades.")
         
-        end_time = time.time()
-        print(f"\nTempo de processamento: {end_time - start_time:.6f}s")
+        print(f"Tempo de execução: {time.time() - start:.5f}s\n")
 
 if __name__ == "__main__":
     executar_sistema()
